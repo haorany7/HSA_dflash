@@ -379,15 +379,20 @@ class Qwen3DFlashAttention(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         bsz, q_len = hidden_states.shape[:-1]
         ctx_len = target_hidden.shape[1]
-        q = self.q_proj(hidden_states)
-        q = q.view(bsz, q_len, -1, self.head_dim)
+        if getattr(self, "qkv_proj", None) is not None:
+            # Fused projection (set by dflash.npu): one GEMM over [ctx; noise]
+            # rows reads Wq/Wk/Wv once instead of in five separate calls.
+            qkv = self.qkv_proj(torch.cat([target_hidden, hidden_states], dim=1))
+            q, k, v = qkv.split(self.qkv_proj.split_sizes, dim=-1)
+            q = q[:, ctx_len:]
+        else:
+            q = self.q_proj(hidden_states)
+            k = torch.cat([self.k_proj(target_hidden), self.k_proj(hidden_states)], dim=1)
+            v = torch.cat([self.v_proj(target_hidden), self.v_proj(hidden_states)], dim=1)
+        q = q.reshape(bsz, q_len, -1, self.head_dim)
         q = self.q_norm(q).transpose(1, 2)
-        k_ctx = self.k_proj(target_hidden)
-        k_noise = self.k_proj(hidden_states)
-        v_ctx = self.v_proj(target_hidden)
-        v_noise = self.v_proj(hidden_states)
-        k = torch.cat([k_ctx, k_noise], dim=1).view(bsz, ctx_len + q_len, -1, self.head_dim)
-        v = torch.cat([v_ctx, v_noise], dim=1).view(bsz, ctx_len + q_len, -1, self.head_dim)
+        k = k.reshape(bsz, ctx_len + q_len, -1, self.head_dim)
+        v = v.reshape(bsz, ctx_len + q_len, -1, self.head_dim)
         k = self.k_norm(k).transpose(1, 2)
         v = v.transpose(1, 2)
         cos, sin = position_embeddings

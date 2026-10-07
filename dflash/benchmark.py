@@ -99,19 +99,17 @@ def load_transformers_models(
         if "DFlash2DraftModel" in (config.architectures or [])
         else DFlashDraftModel
     )
-    draft = (
-        draft_class.from_pretrained(
-            draft_id,
-            attn_implementation="sdpa",
-            dtype=torch.bfloat16,
-        )
-        .to(device)
-        .eval()
-    )
+    draft = draft_class.from_pretrained(
+        draft_id,
+        attn_implementation="sdpa",
+        dtype=torch.bfloat16,
+    ).eval()
     if draft_device == "npu":
-        from .npu import offload_linears
+        from .npu import offload_draft
 
-        offload_linears(draft)
+        # Offload before .to(device) so the projection weights never land there.
+        offload_draft(draft)
+    draft = draft.to(device)
     return target, draft, AutoTokenizer.from_pretrained(model_id)
 
 

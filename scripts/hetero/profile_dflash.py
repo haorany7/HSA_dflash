@@ -26,7 +26,15 @@ if args.w8a8:
     from transformers import AutoTokenizer
     t_load = time.perf_counter()
     target = load_target_w8a8(args.model, dev, quantize_lm_head=os.environ.get("W8A8_HEAD") == "1")
-    draft = load_draft_w8a8(args.draft, dev)
+    if args.draft_device == "npu":
+        from dflash.model import DFlashDraftModel
+        from dflash.npu import offload_draft
+
+        draft = DFlashDraftModel.from_pretrained(args.draft, attn_implementation="sdpa", dtype=torch.bfloat16).eval()
+        offload_draft(draft)
+        draft = draft.to(dev)
+    else:
+        draft = load_draft_w8a8(args.draft, dev)
     tok = AutoTokenizer.from_pretrained(args.model)
     print(f"w8a8 load {time.perf_counter() - t_load:.1f}s  gpu mem {torch.cuda.memory_allocated() / 2**30:.2f} GiB")
 else:
