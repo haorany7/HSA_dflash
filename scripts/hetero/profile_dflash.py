@@ -15,6 +15,7 @@ p.add_argument("--draft", default="z-lab/Qwen3-8B-DFlash-b16")
 p.add_argument("--device", default="cpu")
 p.add_argument("--draft-device", default="same")
 p.add_argument("--w8a8", action="store_true")
+p.add_argument("--block-size", type=int, default=None, help="1 = plain autoregressive with the same target")
 p.add_argument("--max-new-tokens", type=int, default=128)
 p.add_argument("--prompt", default="How many positive whole-number divisors does 196 have? Explain briefly.")
 args = p.parse_args()
@@ -80,10 +81,10 @@ ids = tok.encode(prompt, return_tensors="pt", add_special_tokens=False).to(dev)
 stops = stop_token_ids(target, tok)
 
 with torch.inference_mode():
-    dflash_generate(draft, target, ids, args.max_new_tokens, stops, return_stats=True)  # warmup (NPU compile, allocs)
+    dflash_generate(draft, target, ids, args.max_new_tokens, stops, block_size=args.block_size, return_stats=True)  # warmup (NPU compile, allocs)
     T.clear(); N.clear()
     t0 = time.perf_counter()
-    r = dflash_generate(draft, target, ids, args.max_new_tokens, stops, return_stats=True)
+    r = dflash_generate(draft, target, ids, args.max_new_tokens, stops, block_size=args.block_size, return_stats=True)
     total = time.perf_counter() - t0
 print("TEXT:", repr(tok.decode(r.output_ids[0, ids.shape[1]:], skip_special_tokens=True)[:300]))
 if dev.type == "cuda":

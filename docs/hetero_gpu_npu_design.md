@@ -104,6 +104,9 @@ DFlash greedy 输出和自回归的前 48 个 token 完全一致，第 48 个 to
 | target CPU + NPU draft | 340 ms | 101 ms | 6.05 | 13.1 tok/s |
 | **target GPU W8A8 + NPU draft（异构）** | 169 ms | 106 ms | 6.68 | 23.4 tok/s |
 | target GPU W8A8 + GPU W8A8 draft | 164 ms | 25 ms | 7.06 | **35.7 tok/s** |
+| 对照：同一个 GPU W8A8 target 做纯 AR（`--block-size 1`） | 154 ms/token | — | 1.00 | 6.55 tok/s |
+
+和 AR 比：异构 **3.6×**，全 GPU DFlash **5.5×**。target 前向 1 个 token 要 154 ms，验证 16 个 token 也只要 164 ms（瓶颈在带宽），所以一步验证多个 token 几乎不额外花时间。
 
 **上限分析：** 拟合单次调用耗时，固定开销约 0.24 ms/次，带宽约 30 GB/s。
 - bf16 draft 权重约 2.1 GB，按 30 GB/s 下限约 70 ms，再加 65 次 × 0.24 ms 的固定开销。
