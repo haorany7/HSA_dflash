@@ -73,7 +73,9 @@ def apply_chat_template(
     )
 
 
-def load_transformers_models(model_id: str, draft_id: str, device):
+def load_transformers_models(
+    model_id: str, draft_id: str, device, draft_device: str = "same"
+):
     import torch
     from transformers import (
         AutoConfig,
@@ -106,6 +108,10 @@ def load_transformers_models(model_id: str, draft_id: str, device):
         .to(device)
         .eval()
     )
+    if draft_device == "npu":
+        from .npu import offload_linears
+
+        offload_linears(draft)
     return target, draft, AutoTokenizer.from_pretrained(model_id)
 
 
@@ -222,9 +228,9 @@ def _run_transformers(args: argparse.Namespace) -> None:
     from .model import dflash_generate
 
     torch.manual_seed(0)
-    device = torch.device("cuda:0")
+    device = torch.device(args.device)
     target, draft_model, tokenizer = load_transformers_models(
-        args.model, args.draft, device
+        args.model, args.draft, device, args.draft_device
     )
 
     block_size = args.block_size if args.block_size is not None else draft_model.block_size

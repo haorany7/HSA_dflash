@@ -172,7 +172,8 @@ def _attention_mask(query, key, *, is_causal, sliding_window):
 
 
 def _cuda_time() -> float:
-    torch.cuda.synchronize()
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
     return time.perf_counter()
 
 

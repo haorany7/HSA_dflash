@@ -19,6 +19,17 @@ def _add_inference_arguments(parser: argparse.ArgumentParser) -> None:
         "--reasoning",
         help="off/on or a model-supported reasoning level",
     )
+    parser.add_argument(
+        "--device",
+        default="cuda:0",
+        help="Torch device for the transformers backend (cuda:0 also selects ROCm GPUs)",
+    )
+    parser.add_argument(
+        "--draft-device",
+        choices=("same", "npu"),
+        default="same",
+        help="Run draft-model linear layers on --device (same) or the AMD NPU",
+    )
     parser.add_argument("--base-url", default="http://127.0.0.1:30000")
     parser.add_argument("--timeout-s", type=int, default=3600)
 
@@ -60,9 +71,9 @@ def _generate_transformers(args) -> None:
     from .model import dflash_generate
 
     torch.manual_seed(0)
-    device = torch.device("cuda:0")
+    device = torch.device(args.device)
     target, draft, tokenizer = load_transformers_models(
-        args.model, args.draft, device
+        args.model, args.draft, device, args.draft_device
     )
     prompt = apply_chat_template(tokenizer, _messages(args), args.reasoning)
     input_ids = tokenizer.encode(
