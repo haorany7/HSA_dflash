@@ -124,6 +124,7 @@ DFlash greedy 输出和自回归的前 48 个 token 完全一致，第 48 个 to
 - target 都是 GPU W8A8 + `torch.compile` + int8 lm_head。
 - 原始数据：`docs/data/pareto.jsonl`；运行日志：`docs/data/sweep.log`。
 - 复现：`scripts/hetero/pareto.py` 跑数据，`plot_pareto.py` 画图。
+- 图中每个系统一条线，每个点对应一个并发数 B。DFlash 在每个 B 下取吞吐最高的 block size（同一个 B 下，吞吐最高也就是每用户 TPS 最高），点旁边标注所用的 block。各个 block 的完整数据都在 jsonl 里。
 
 **正确性：**
 - AR batching 和原实现逐 token 一致。
