@@ -38,6 +38,8 @@ p.add_argument("--out", default="docs/data/pareto.jsonl")
 args = p.parse_args()
 
 os.environ.setdefault("W8A8_COMPILE", "1")
+# Fewer fragmentation OOMs as the KV cache grows by torch.cat every step.
+os.environ.setdefault("PYTORCH_HIP_ALLOC_CONF", "expandable_segments:True")
 # Each (M, K, N) of the W8A8 GEMM is a dynamo guard; the default limit (8) would
 # silently drop later shapes to eager and skew points against each other.
 for _name in ("cache_size_limit", "recompile_limit"):
@@ -46,7 +48,7 @@ for _name in ("cache_size_limit", "recompile_limit"):
 from gpu_w8a8 import load_draft_w8a8, load_target_w8a8  # noqa: E402  (reads W8A8_COMPILE)
 
 dev = torch.device("cuda")
-target = load_target_w8a8(args.model, dev, quantize_lm_head=True)
+target = load_target_w8a8(args.model, dev, quantize_lm_head=True, embed_on_host=True)
 draft = None
 if args.system == "gpu":
     draft = load_draft_w8a8(args.draft, dev)

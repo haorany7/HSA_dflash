@@ -1,0 +1,51 @@
+ar     block= 1 B= 1  TPS/user=  6.46  throughput=   6.46 tok/s  accept= 1.00  target= 155.7 ms  draft=   0.0 ms/step
+ar     block= 1 B= 2  TPS/user=  5.99  throughput=  11.98 tok/s  accept= 1.00  target= 167.8 ms  draft=   0.0 ms/step
+ar     block= 1 B= 4  TPS/user=  5.21  throughput=  20.85 tok/s  accept= 1.00  target= 192.8 ms  draft=   0.0 ms/step
+ar     block= 1 B= 8  TPS/user=  3.94  throughput=  31.54 tok/s  accept= 1.00  target= 255.0 ms  draft=   0.0 ms/step
+ar     block= 1 B=16  TPS/user=  2.80  throughput=  44.73 tok/s  accept= 1.00  target= 359.8 ms  draft=   0.0 ms/step
+ar     block= 1 B=32  TPS/user=  1.75  throughput=  55.95 tok/s  accept= 1.00  target= 575.6 ms  draft=   0.0 ms/step
+gpu    block=16 B= 1  TPS/user= 18.90  throughput=  18.90 tok/s  accept= 4.26  target= 180.3 ms  draft=  27.4 ms/step
+gpu    block=16 B= 2  TPS/user= 16.06  throughput=  32.11 tok/s  accept= 4.27  target= 213.6 ms  draft=  32.1 ms/step
+gpu    block=16 B= 4  TPS/user= 12.03  throughput=  48.13 tok/s  accept= 4.80  target= 287.8 ms  draft=  42.8 ms/step
+gpu    block=16 B= 8  TPS/user=  6.26  throughput=  50.07 tok/s  accept= 4.67  target= 524.0 ms  draft=  76.9 ms/step
+[W1007 08:29:07.196776717 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 96468992 bytes (free: 43806720, total: 12392419328).
+[W1007 08:29:08.739186636 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 96468992 bytes (free: 104624128, total: 12392419328).
+[W1007 08:29:08.095676389 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 2097152 bytes (free: 10252288, total: 12392419328).
+[W1007 08:29:08.095729968 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 2097152 bytes (free: 10252288, total: 12392419328).
+[W1007 08:29:08.208130077 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 2097152 bytes (free: 10252288, total: 12392419328).
+gpu block=16 B=16: OOM, skipping larger batches
+gpu    block= 8 B= 1  TPS/user= 19.24  throughput=  19.24 tok/s  accept= 3.94  target= 165.6 ms  draft=  25.3 ms/step
+gpu    block= 8 B= 2  TPS/user= 15.64  throughput=  31.28 tok/s  accept= 3.74  target= 187.8 ms  draft=  28.6 ms/step
+gpu    block= 8 B= 4  TPS/user= 12.93  throughput=  51.71 tok/s  accept= 3.95  target= 229.0 ms  draft=  34.4 ms/step
+gpu    block= 8 B= 8  TPS/user=  7.90  throughput=  63.21 tok/s  accept= 4.23  target= 350.7 ms  draft=  52.2 ms/step
+[W1007 08:31:08.597283651 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 111149056 bytes (free: 77099008, total: 12392419328).
+[W1007 08:31:10.369476039 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 115343360 bytes (free: 72904704, total: 12392419328).
+[W1007 08:31:10.380340064 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 115343360 bytes (free: 100167680, total: 12392419328).
+gpu block=8 B=16: OOM, skipping larger batches
+gpu    block= 4 B= 1  TPS/user= 15.30  throughput=  15.30 tok/s  accept= 2.95  target= 159.4 ms  draft=  24.5 ms/step
+[W1007 08:31:36.337619686 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 2097152 bytes (free: 12087296, total: 12392419328).
+gpu    block= 4 B= 2  TPS/user= 13.76  throughput=  27.52 tok/s  accept= 2.97  target= 174.3 ms  draft=  26.5 ms/step
+gpu    block= 4 B= 4  TPS/user= 11.57  throughput=  46.27 tok/s  accept= 2.99  target= 204.1 ms  draft=  31.0 ms/step
+gpu    block= 4 B= 8  TPS/user=  7.37  throughput=  58.93 tok/s  accept= 3.03  target= 292.5 ms  draft=  43.5 ms/step
+gpu    block= 4 B=16  TPS/user=  4.96  throughput=  79.33 tok/s  accept= 3.03  target= 439.1 ms  draft=  65.2 ms/step
+[W1007 08:33:50.563420331 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 79691776 bytes (free: 62418944, total: 12392419328).
+[W1007 08:33:55.619795755 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 79691776 bytes (free: 62418944, total: 12392419328).
+[W1007 08:33:55.619865254 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 79691776 bytes (free: 62418944, total: 12392419328).
+gpu block=4 B=32: OOM, skipping larger batches
+hetero block=16 B= 1  TPS/user= 15.22  throughput=  15.22 tok/s  accept= 4.70  target= 183.7 ms  draft= 112.3 ms/step
+hetero block=16 B= 2  TPS/user= 13.23  throughput=  26.45 tok/s  accept= 4.72  target= 215.6 ms  draft= 124.9 ms/step
+hetero block=16 B= 4  TPS/user=  9.81  throughput=  39.23 tok/s  accept= 4.99  target= 283.5 ms  draft= 184.3 ms/step
+hetero block=16 B= 8  TPS/user=  4.48  throughput=  35.83 tok/s  accept= 5.15  target= 526.4 ms  draft= 317.7 ms/step
+[W1007 08:37:40.127122820 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 146800640 bytes (free: 110960640, total: 12392419328).
+[W1007 08:37:45.830975395 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 159383552 bytes (free: 119349248, total: 12392419328).
+[W1007 08:37:45.841265865 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 159383552 bytes (free: 125640704, total: 12392419328).
+[W1007 08:37:55.880973005 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 2097152 bytes (free: 10297344, total: 12392419328).
+hetero block=16 B=16: OOM, skipping larger batches
+hetero block= 8 B= 1  TPS/user= 13.29  throughput=  13.29 tok/s  accept= 4.06  target= 168.5 ms  draft= 111.7 ms/step
+hetero block= 8 B= 2  TPS/user= 11.38  throughput=  22.76 tok/s  accept= 4.12  target= 194.0 ms  draft= 118.5 ms/step
+hetero block= 8 B= 4  TPS/user=  9.88  throughput=  39.51 tok/s  accept= 4.19  target= 230.9 ms  draft= 132.4 ms/step
+hetero block= 8 B= 8  TPS/user=  6.39  throughput=  51.15 tok/s  accept= 4.28  target= 340.0 ms  draft= 201.1 ms/step
+[W1007 08:40:09.272466384 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 92274688 bytes (free: 49930240, total: 12392419328).
+[W1007 08:40:17.805226030 HIPCachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 106954752 bytes (free: 54124544, total: 12392419328).
+hetero block= 8 B=16  TPS/user=  3.74  throughput=  59.85 tok/s  accept= 4.38  target= 596.2 ms  draft= 332.6 ms/step
+SWEEP DONE

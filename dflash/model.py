@@ -135,7 +135,9 @@ def _draft_value(config, name, default=None):
 def _raw_input_embeddings(
     target: nn.Module, input_ids: torch.Tensor, scale: float = 1.0
 ) -> torch.Tensor:
-    return F.embedding(input_ids, target.get_input_embeddings().weight) * scale
+    # Call the module (not F.embedding on .weight) so an embedding kept on
+    # another device, e.g. host memory, can do its own lookup.
+    return target.get_input_embeddings()(input_ids) * scale
 
 
 def _output_head(target: nn.Module) -> nn.Module:

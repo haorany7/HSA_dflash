@@ -131,26 +131,33 @@ DFlash greedy 输出和自回归的前 48 个 token 完全一致，第 48 个 to
 - DFlash batching 做了 teacher forcing 检查（把生成的序列整段喂给 target，看每个位置是不是 target 的 argmax）：256 个 token 里只有 2 个不是 argmax，logit 差距都是 0.5，属于 bf16 near-tie。
 - 左 padding 会改变 attention 的累加顺序，再经 W8A8 动态量化放大，所以 batched 输出和 B=1 输出会在 near-tie 处分叉。这是数值噪声，不是逻辑错误。
 
-**前沿上的点（全部是全 GPU DFlash）：**
+**显存设置（v2，2026-10-07）：**
+- target 的 embedding 表（bf16，1.2 GB）放在 host 上（`HostEmbedding`），只把查到的那几行拷到 GPU。
+- 打开 `PYTORCH_HIP_ALLOC_CONF=expandable_segments:True`。
 
-| 配置 | 每用户 TPS | 吞吐 tok/s | 接受长度/步 |
+GPU 共 11.54 GiB，只装 target 权重时就占了 9.19 GiB，batch 上限是被这个卡住的。
+上一版（embedding 还在 GPU 上）的数据保留在 `docs/data/*_v1_embed_on_gpu.*`。
+
+**每个并发数 B 下的最好点（DFlash 取最优的 block size）：**
+
+| B | AR TPS / 吞吐 | 全 GPU DFlash TPS / 吞吐 (block) | 异构 DFlash TPS / 吞吐 (block) |
 |---|---|---|---|
-| block 8, B=1 | 19.2 | 19.2 | 3.94 |
-| block 16, B=2 | 16.1 | 32.1 | 4.27 |
-| block 8, B=4 | 12.9 | 51.7 | 3.95 |
-| block 8, B=8 | 7.9 | 63.2 | 4.23 |
-| block 4, B=16 | 5.0 | **79.3** | 3.03 |
-
-对照：
-- AR：B=1 时 6.5 tok/s；B=32 时总吞吐 56 tok/s，但每用户只有 1.75。
-- 异构（NPU draft）：最好的点是 block 16 B=1（15.2 TPS）和 block 8 B=16（59.9 tok/s），都不在前沿上。
+| 1 | 6.5 / 6.5 | **19.4 / 19.4** (8) | 15.2 / 15.2 (16) |
+| 2 | 6.1 / 12.1 | **16.3 / 32.5** (16) | 13.3 / 26.6 (16) |
+| 4 | 5.4 / 21.6 | **13.1 / 52.5** (8) | 10.0 / 39.8 (16) |
+| 8 | 4.1 / 32.5 | **8.1 / 64.8** (8) | 6.4 / 51.1 (8) |
+| 16 | 2.9 / 45.9 | **5.1 / 81.1** (4) | 4.3 / 68.7 (4) |
+| 32 | 1.8 / 57.9 | OOM（所有 block） | 2.5 / **78.9** (4) |
+| 64 | OOM | — | — |
 
 **结论：**
-1. **在任何每用户 TPS 下，DFlash 的总吞吐都比 AR 高。** 同样 B=8 时：block 8 的 DFlash 63.2 tok/s，AR 31.5 tok/s；最大吞吐：DFlash 79.3，AR 56.0。
-2. **batch 越大，最优 block 越小**（B=1–2 用 16 或 8，B=4–8 用 8，B=16 用 4）。原因是验证的 token 数 = B × block，B 大了以后 target 前向会从受带宽限制变成受算力限制，长 block 后面那些多半会被拒的 token 开始真正占用算力。
-3. **NPU draft 不在前沿上。** B=1 时 draft 每步 112 ms，GPU draft 只要 27 ms。B 增大时，NPU 的行数补齐到 64 的 2 的幂，超过 64 行就要多读几遍权重，所以 B=8 时 draft 每步涨到 318 ms。只有 block 8、B=16 这个点，因为 draft 不占 GPU 显存，能跑到 GPU DFlash 同 block 跑不到的 batch。
-4. **GSM8K 上的接受长度（block 16 时 4.3–5.2）比之前单个 prompt（6–7）低**，所以 DFlash 在 B=1 时的加速是 2.9×，比单 prompt 时的 5.5× 低。
-5. **batch 上限受 GPU 显存约束**（11.5 GiB，target 就占约 9.75 GiB）。DFlash 在 block 16/8 时 B=16 OOM，block 4 时 B=32 OOM。lockstep 实现会把被拒的 token 留在 KV cache 里（只是 mask 掉），每步都占满 block 个 slot。如果改成压缩 cache，还能把 batch 再往上推。
+1. **每个 B 下，DFlash 都比 AR 好。** 同一个 B，两种 DFlash 的每用户 TPS 和总吞吐都更高。最大吞吐：GPU DFlash 81.1，异构 78.9，AR 57.9。
+2. **在两种 DFlash 都能跑的 B 下（B≤16），全 GPU 都更好。** 原因是 NPU draft 每步 107–558 ms，GPU draft 只要 24–88 ms。B 增大时，NPU 的行数会补齐到 64 的 2 的幂，超过 64 行就要多读几遍权重。
+3. **异构方案唯一的优势是显存。** NPU draft 不占 GPU 显存，所以能跑到 **B=32**（block 4，78.9 tok/s）。全 GPU 方案在 B=32 时所有 block 都 OOM（draft 的 W8A8 权重和它的 KV cache 也要放在 GPU 上）。它在最大吞吐上接近全 GPU 的峰值，但每用户速度只有一半（2.5 对 5.1 TPS）。
+4. **batch 越大，最优 block 越小**（B=1–2 用 16 或 8，B=4–8 用 8，B=16–32 用 4）。原因是验证的 token 数 = B × block，B 大了以后 target 前向会从受带宽限制变成受算力限制，长 block 后面那些多半会被拒的 token 开始真正占用算力。
+5. **GSM8K 上的接受长度**：block 16 时 4.3–5.2，比之前单个 prompt（6–7）低。
+6. **batch 上限的另一半原因是 lockstep 的 KV cache。** 被拒的 token 只是被 mask 掉，并不删除，所以每步每行都会增加 block 个 slot（block 16 时每行最多约 570 个 slot）。如果改成压缩 cache，全 GPU 方案应该也能跑到 B=32。
+7. 即使把 embedding 挪走、打开 expandable segments，全 GPU block 16 B=16 也是有时能跑、有时 OOM（单独测时跑通了，58.9 tok/s；完整 sweep 里 OOM 了），说明已经贴着显存上限。
 
 ## 4. 异构架构
 

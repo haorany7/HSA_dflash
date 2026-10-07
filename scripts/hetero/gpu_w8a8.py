@@ -100,7 +100,23 @@ def _check(model):
         raise RuntimeError(f"tensors left on meta: {bad[:10]} (+{max(0, len(bad) - 10)})")
 
 
-def load_target_w8a8(model_id, device="cuda", quantize_lm_head=False):
+class HostEmbedding(nn.Module):
+    """Token embedding kept in host memory; only the looked-up rows move to the GPU.
+
+    The bf16 table is 1.2 GB for Qwen3 (151936 x 4096) but decode reads a few
+    dozen rows per step, so keeping it off the GPU frees room for KV cache.
+    """
+
+    def __init__(self, embedding: nn.Embedding, device):
+        super().__init__()
+        self.weight = nn.Parameter(embedding.weight.detach().to("cpu"), requires_grad=False)
+        self.device = torch.device(device)
+
+    def forward(self, input_ids):
+        return nn.functional.embedding(input_ids.cpu(), self.weight).to(self.device, non_blocking=True)
+
+
+def load_target_w8a8(model_id, device="cuda", quantize_lm_head=False, embed_on_host=False):
     from transformers import AutoConfig, AutoModelForCausalLM
 
     repo = snapshot_download(model_id, allow_patterns=["*.json", "*.safetensors"])
@@ -115,6 +131,9 @@ def load_target_w8a8(model_id, device="cuda", quantize_lm_head=False):
         model.tie_weights()
     _rematerialize_meta(model, device)
     _check(model)
+    if embed_on_host and not config.tie_word_embeddings:
+        model.model.embed_tokens = HostEmbedding(model.model.embed_tokens, device)
+        torch.cuda.empty_cache()
     return model.eval()
 
 

@@ -60,7 +60,10 @@ def batched_generate(
     pad_token_id: int = 0,
 ) -> SimpleNamespace:
     """Decode ``max_new_tokens`` greedy tokens for every prompt; ``block_size=1`` is plain AR."""
-    device = target.device
+    # The output head's device, not target.device: HF reports the first
+    # parameter's device, which is the host when the embedding lives there.
+    head_module = _output_head(target)
+    device = next(iter([*head_module.parameters(), *head_module.buffers()])).device
     bsz = len(prompts)
     prompt_len = max(len(p) for p in prompts)
     ids = torch.full((bsz, prompt_len), pad_token_id, dtype=torch.long, device=device)
