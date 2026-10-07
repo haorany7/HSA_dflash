@@ -113,6 +113,44 @@ DFlash greedy 输出和自回归的前 48 个 token 完全一致，第 48 个 to
 - int8（实测 i8 GEMM：4096×4096 约 0.93 ms，24576 宽约 27 GB/s）大约能到 60–70 ms。
 - **两种都比 GPU draft 的 25 ms 慢 3 倍以上。** 所以在 DFlash 串行"起草→验证"的流程里，NPU draft 不可能比 GPU draft 快。NPU 要带来收益，必须让 NPU 和 GPU 同时工作（见第 7 节）。
 
+### 3.6 Throughput vs 每用户 TPS 的 Pareto 前沿（2026-10-07）
+
+![pareto](pareto.png)
+
+**设置：**
+- 静态 batching（`dflash/batched.py`）。每个 batch 内所有行同步推进，不同行接受的 token 数不一样，用 mask 处理。
+- 每个点取 GSM8K 前 B 个问题，每行生成固定 128 个 token，greedy，不在 EOS 停。
+- 只统计 decode 时间（TTFT 另记）。每用户 TPS = 128 / decode 时间，吞吐 = B × 128 / decode 时间。
+- target 都是 GPU W8A8 + `torch.compile` + int8 lm_head。
+- 原始数据：`docs/data/pareto.jsonl`；运行日志：`docs/data/sweep.log`。
+- 复现：`scripts/hetero/pareto.py` 跑数据，`plot_pareto.py` 画图。
+
+**正确性：**
+- AR batching 和原实现逐 token 一致。
+- DFlash batching 做了 teacher forcing 检查（把生成的序列整段喂给 target，看每个位置是不是 target 的 argmax）：256 个 token 里只有 2 个不是 argmax，logit 差距都是 0.5，属于 bf16 near-tie。
+- 左 padding 会改变 attention 的累加顺序，再经 W8A8 动态量化放大，所以 batched 输出和 B=1 输出会在 near-tie 处分叉。这是数值噪声，不是逻辑错误。
+
+**前沿上的点（全部是全 GPU DFlash）：**
+
+| 配置 | 每用户 TPS | 吞吐 tok/s | 接受长度/步 |
+|---|---|---|---|
+| block 8, B=1 | 19.2 | 19.2 | 3.94 |
+| block 16, B=2 | 16.1 | 32.1 | 4.27 |
+| block 8, B=4 | 12.9 | 51.7 | 3.95 |
+| block 8, B=8 | 7.9 | 63.2 | 4.23 |
+| block 4, B=16 | 5.0 | **79.3** | 3.03 |
+
+对照：
+- AR：B=1 时 6.5 tok/s；B=32 时总吞吐 56 tok/s，但每用户只有 1.75。
+- 异构（NPU draft）：最好的点是 block 16 B=1（15.2 TPS）和 block 8 B=16（59.9 tok/s），都不在前沿上。
+
+**结论：**
+1. **在任何每用户 TPS 下，DFlash 的总吞吐都比 AR 高。** 同样 B=8 时：block 8 的 DFlash 63.2 tok/s，AR 31.5 tok/s；最大吞吐：DFlash 79.3，AR 56.0。
+2. **batch 越大，最优 block 越小**（B=1–2 用 16 或 8，B=4–8 用 8，B=16 用 4）。原因是验证的 token 数 = B × block，B 大了以后 target 前向会从受带宽限制变成受算力限制，长 block 后面那些多半会被拒的 token 开始真正占用算力。
+3. **NPU draft 不在前沿上。** B=1 时 draft 每步 112 ms，GPU draft 只要 27 ms。B 增大时，NPU 的行数补齐到 64 的 2 的幂，超过 64 行就要多读几遍权重，所以 B=8 时 draft 每步涨到 318 ms。只有 block 8、B=16 这个点，因为 draft 不占 GPU 显存，能跑到 GPU DFlash 同 block 跑不到的 batch。
+4. **GSM8K 上的接受长度（block 16 时 4.3–5.2）比之前单个 prompt（6–7）低**，所以 DFlash 在 B=1 时的加速是 2.9×，比单 prompt 时的 5.5× 低。
+5. **batch 上限受 GPU 显存约束**（11.5 GiB，target 就占约 9.75 GiB）。DFlash 在 block 16/8 时 B=16 OOM，block 4 时 B=32 OOM。lockstep 实现会把被拒的 token 留在 KV cache 里（只是 mask 掉），每步都占满 block 个 slot。如果改成压缩 cache，还能把 batch 再往上推。
+
 ## 4. 异构架构
 
 ```
@@ -209,5 +247,6 @@ NPU draft 在串行流程里打不过 GPU draft（第 3.5 节）。接下来可�
    - 用 shim 的第二个 MM2S 通道提高带宽
    - 零拷贝
    - 把 SiLU、norm 也放到 NPU 上
-3. **回到 GPU target 优化**：合并 qkv、gate/up，写 Triton int8 kernel，目标是接近 120 GB/s。这对端到端速度最直接。
+3. **回到 GPU target 优化**（Pareto 前沿全是 GPU DFlash，target 前向占每步大部分时间）：合并 qkv、gate/up，写 Triton int8 kernel，目标是接近 120 GB/s。这对端到端速度最直接。
 4. **并入代码，用多个 prompt 验证质量。**
+5. **batched DFlash 的显存优化**：压缩 KV cache，丢掉被拒 token 的 slot；按 batch 大小自动选 block size。
