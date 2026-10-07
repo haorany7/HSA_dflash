@@ -128,11 +128,12 @@ DFlash greedy 输出和自回归的前 48 个 token 完全一致，第 48 个 to
 
 ## 6. 运行环境
 
+VM 重启后只有 `/notebooks` 会保留。持久化的配置放在 `/notebooks/.persist/`，由 `claude-env.sh` 自动 source：
+`GIT_CONFIG_GLOBAL`（git 身份和 GitHub SSH key）、`HF_HOME=/notebooks/.cache/huggingface`，以及 `dflash_env` 函数。
+
 ```bash
-cd /notebooks/dflash
-source /opt/xilinx/xrt/setup.sh
-export PYTHONPATH=/home/mliraie/mlir-aie/ironenv/lib/python3.12/site-packages/mlir_aie/python:/opt/xilinx/xrt/python
-export PATH=/home/mliraie/mlir-aie/ironenv/bin:$PATH   # aiecc 等工具
+source /notebooks/claude-env.sh
+dflash_env   # source XRT，设置 IRON/XRT 的 PYTHONPATH 和 PATH，然后 cd /notebooks/dflash
 # MLIR_AIE_SRC 默认是 /notebooks/mlir-aie（whole_array 设计所在的位置）
 
 # GPU W8A8（当前最好配置，35.8 tok/s）
@@ -148,7 +149,9 @@ PYTHONPATH=scripts/hetero:$PYTHONPATH \
 - dflash 的 `.venv`（torch-ROCm + transformers）里额外装了 `ml_dtypes aiofiles rich cloudpickle`，这样 IRON 才能 import。
 - 找不到 `pyxrt` 时，IRON 会**静默**退回到只有 CPU 的 tensor 类，然后报 `Unsupported device: npu`。
   所以一定要先 source XRT，并把 `/opt/xilinx/xrt/python` 加进 PYTHONPATH。
-- checkpoint 在 `~/.cache/huggingface/hub/`，两个都已下载完整。可以设 `HF_HUB_OFFLINE=1`。
+- checkpoint 在 `$HF_HOME/hub/`（`/notebooks/.cache/huggingface`）。原来放在 `~/.cache`，VM 重启时丢了，
+  2026-10-07 已重新下载到持久盘。下载完成后可以设 `HF_HUB_OFFLINE=1`。
+- `~/.npu` 下的 NPU JIT 缓存不在持久盘上，重启后每个 GEMM shape 要重新编译一次（约 5 s）。
 
 ## 7. 下一步（待定）
 
