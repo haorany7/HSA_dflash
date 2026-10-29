@@ -71,7 +71,7 @@ def batched_generate(
     for b, p in enumerate(prompts):
         ids[b, prompt_len - len(p):] = p.to(device)
         t_valid[b, prompt_len - len(p):] = True
-    positions = (t_valid.cumsum(1) - 1).clamp(min=0)
+    positions = (t_valid.long().cumsum(1) - 1).clamp(min=0)
     speculative = block_size > 1
     arange = torch.arange(block_size, device=device)
 

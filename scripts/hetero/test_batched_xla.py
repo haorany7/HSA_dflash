@@ -1,6 +1,7 @@
 """Check dflash.batched_xla against dflash.batched on tiny random models (CPU, fp32).
 
-A random draft is almost never accepted, so the draft's real forward (and its
+The reference (``batched_generate``) always runs on CPU; ``batched_generate_xla``
+runs on ``device``. A random draft is almost never accepted, so the draft's real forward (and its
 cache) still runs but its proposals are replaced by an oracle: the target's AR
 continuation, with ~10% of positions (irregularly) deterministically corrupted. Greedy
 speculative decoding is lossless, so both implementations must reproduce the
@@ -28,7 +29,6 @@ dcfg = Qwen3Config(vocab_size=V, hidden_size=64, intermediate_size=128, num_hidd
 dcfg.num_target_layers = 6
 dcfg.dflash_config = {"target_layer_ids": [1, 3], "mask_token_id": V - 1, "block_size": 8}
 draft = DFlashDraftModel(dcfg).eval()
-target.to(dev); draft.to(dev)
 
 prompts = [torch.randint(0, V - 1, (n,)) for n in (5, 17, 9, 30)]
 N = 40
@@ -53,9 +53,14 @@ def oracle_logits(hidden, head, rows):
 
 draft.register_forward_pre_hook(capture, with_kwargs=True)
 ok = True
+refs = {}
 for block in (1, 4, 8):
     draft.compute_logits = lambda h, head: oracle_logits(h, head, range(len(prompts)))
-    ref = batched_generate(draft, target, prompts, N, block, pad_token_id=0)
+    refs[block] = batched_generate(draft, target, prompts, N, block, pad_token_id=0)
+target.to(dev); draft.to(dev)
+for block in (1, 4, 8):
+    ref = refs[block]
+    draft.compute_logits = lambda h, head: oracle_logits(h, head, range(len(prompts)))
     new = batched_generate_xla(draft, target, prompts, N, block, pad_token_id=0, prompt_bucket=16)
     for b in range(len(prompts)):
         same = ref.tokens[b] == new.tokens[b] == ar[b]

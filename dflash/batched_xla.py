@@ -136,6 +136,9 @@ def batched_generate_xla(
         emb_scale = float(_draft_value(draft.config, "input_embedding_scale", 1.0))
         mask_ids = torch.full((bsz, block_size - 1), draft.mask_token_id, dtype=torch.long, device=device)
     del out  # drop every layer's hidden states before the graph is cut
+    # mark_step (not just .cpu()) so the cache writes run in this graph; otherwise
+    # they stay pending and every later step compiles an ever-larger graph.
+    _mark_step(device)
     first = last_tok.cpu()  # graph boundary
     ttft = _sync(device) - t0
 
@@ -176,7 +179,9 @@ def batched_generate_xla(
             ctx = extract_context_feature(out.hidden_states, draft.target_layer_ids)
         del out
         # One transfer per step: block tokens and the target's argmax.
-        both = torch.cat([block_ids, posterior], dim=1).cpu()
+        both = torch.cat([block_ids, posterior], dim=1)
+        _mark_step(device)
+        both = both.cpu()
         block_host, post_host = both[:, :block_size], both[:, block_size:]
         if speculative:
             accepted = (block_host[:, 1:] == post_host[:, :-1]).long().cumprod(1).sum(1)
