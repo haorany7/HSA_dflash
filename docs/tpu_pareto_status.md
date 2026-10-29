@@ -77,13 +77,46 @@ transformers 5.20.2).
 ## Status (2026-10-29)
 
 - Equivalence test: PASS on CPU and TPU.
-- Full sweep (`run_sweep.sh`, AR + DFlash blocks 4/8/16, B = 1..128) running /
-  finished; results in `docs/data/pareto_tpu.jsonl`, log `docs/data/sweep_tpu.log`,
-  plot `docs/pareto_tpu.png`. See "Results" below.
+- Full sweep (`run_sweep.sh`, AR + DFlash blocks 4/8/16, B = 1..128) finished: 29 points,
+  all with 0 recompiles in the timed run. Results in `docs/data/pareto_tpu.jsonl`, log
+  `docs/data/sweep_tpu.log`, plot `docs/pareto_tpu.png` (log axes, Ryzen overlay).
+- Every DFlash block size OOMed at B=128 (AR B=128 fits).
 
-### Results
+### Results (v6e-1, bf16, GSM8K, 128 new tokens)
 
-PLACEHOLDER (filled in when the sweep finishes)
+TPS/user / throughput (tok/s); best throughput per B in bold.
+
+| B | AR | DFlash blk 4 | DFlash blk 8 | DFlash blk 16 |
+|---|---|---|---|---|
+| 1 | 16.6 / 16.6 | 40.5 / 40.5 | 45.9 / 45.9 | 52.7 / **52.6** |
+| 2 | 16.2 / 32.3 | 39.7 / 79.5 | 46.0 / 92.0 | 49.2 / **98.5** |
+| 4 | 15.5 / 62.0 | 37.1 / 148.4 | 43.0 / 172.1 | 53.6 / **214.4** |
+| 8 | 14.9 / 118.8 | 30.8 / 246.0 | 35.9 / 287.3 | 38.8 / **310.4** |
+| 16 | 12.5 / 200.0 | 28.5 / 455.9 | 26.4 / 423.0 | 29.5 / **472.4** |
+| 32 | 10.8 / 346.2 | 23.0 / 734.4 | 28.8 / **921.5** | 24.0 / 766.3 |
+| 64 | 8.1 / 515.0 | 17.4 / **1115.1** | 16.8 / 1076.8 | 14.3 / 915.5 |
+| 128 | 5.1 / 647.9 | OOM | OOM | OOM |
+
+Mean accept length: blk 4 ~2.8-3.1, blk 8 ~3.4-4.0, blk 16 ~3.9-5.1.
+
+Takeaways:
+- DFlash beats AR on both axes at every B tested. Peak throughput 1115 tok/s (blk 4,
+  B=64) vs AR's 648 (B=128), while each user still gets 17.4 vs 5.1 tok/s.
+- At AR's best per-user speed (~16.6 tok/s, B=1), DFlash serves B=64 at ~17 tok/s per
+  user, about 65x the throughput.
+- The best block shrinks as B grows (16 for B<=16, 8 at B=32, 4 at B=64): at large B
+  the verify cost of long blocks outweighs the extra accepted tokens.
+- Step time is flat (~60-90 ms) up to B~8, i.e. host/launch overhead, not compute, sets
+  small-batch speed (see Caveats).
+- Some noise: blk 8 B=16 is slower per user than B=32, and the B=1 blk 16 smoke run
+  gave 59.5 TPS/user vs 52.7 in the sweep. Accept length varies with which questions
+  are in the batch; single runs, no repeats.
+
+### Next steps (not started)
+
+- Cut host overhead (`torch_xla.compile` / dynamo `openxla`), then re-sweep.
+- Retry DFlash B=128 in a fresh process; reduce memory if it still OOMs.
+- Repeat runs for error bars.
 
 ## Caveats / open questions
 
@@ -93,7 +126,7 @@ PLACEHOLDER (filled in when the sweep finishes)
   dynamo `openxla` backend, or caching the traced step) would move the whole frontier.
 - `peak_hbm_gib` is the process-wide peak (`xm.get_memory_info`), not per point, so it
   only increases within one `pareto_tpu.py` run.
-- `dflash block=4 B=128` hit OOM (32 GiB HBM) after B=64 succeeded, in the same process
+- DFlash B=128 hit OOM (32 GiB HBM) for every block after B=64 succeeded, in the same process
   as smaller points; it may fit in a fresh process (fragmentation / earlier buffers).
   Untested.
 - The persistent compile cache (`xr.initialize_cache`) logs "Deserializing serialized

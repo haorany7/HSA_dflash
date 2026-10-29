@@ -1,0 +1,64 @@
+== equivalence test on the TPU (tiny random models; device xla) ==
+[transformers] Calling `crop` with a positive value is deprecated and will be removed in version 5.18. Please use a negative integer to remove that number of tokens from the cache instead.
+block=1 row=0: agree 40/40
+block=1 row=1: agree 40/40
+block=1 row=2: agree 40/40
+block=1 row=3: agree 40/40
+  steps ref=39 new=39  max accept ref=1 new=1
+block=4 row=0: agree 40/40
+block=4 row=1: agree 40/40
+block=4 row=2: agree 40/40
+block=4 row=3: agree 40/40
+  steps ref=12 new=12  max accept ref=4 new=4
+block=8 row=0: agree 40/40
+block=8 row=1: agree 40/40
+block=8 row=2: agree 40/40
+block=8 row=3: agree 40/40
+  steps ref=9 new=9  max accept ref=8 new=8
+PASS
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights: 100%|██████████| 399/399 [00:00<00:00, 12795.14it/s]
+loaded on v6e-1 in 2s
+2026-10-29 23:17:34.772617: W torch_xla/csrc/runtime/pjrt_computation_client.cpp:694] Failed to deserialize executable: UNIMPLEMENTED: Deserializing serialized executable not supported.
+2026-10-29 23:17:40.877588: W torch_xla/csrc/runtime/pjrt_computation_client.cpp:694] Failed to deserialize executable: UNIMPLEMENTED: Deserializing serialized executable not supported.
+tpu_ar     block= 1 B=  1  TPS/user=  16.62  throughput=   16.62 tok/s  accept= 1.00  step=  60.6 ms  warmup=   18s  recompiles=0
+tpu_ar     block= 1 B=  2  TPS/user=  16.17  throughput=   32.33 tok/s  accept= 1.00  step=  62.3 ms  warmup=   19s  recompiles=0
+tpu_ar     block= 1 B=  4  TPS/user=  15.49  throughput=   61.97 tok/s  accept= 1.00  step=  65.1 ms  warmup=   21s  recompiles=0
+tpu_ar     block= 1 B=  8  TPS/user=  14.85  throughput=  118.84 tok/s  accept= 1.00  step=  67.9 ms  warmup=   24s  recompiles=0
+tpu_ar     block= 1 B= 16  TPS/user=  12.50  throughput=  200.04 tok/s  accept= 1.00  step=  80.6 ms  warmup=   27s  recompiles=0
+tpu_ar     block= 1 B= 32  TPS/user=  10.82  throughput=  346.24 tok/s  accept= 1.00  step=  93.1 ms  warmup=   28s  recompiles=0
+tpu_ar     block= 1 B= 64  TPS/user=   8.05  throughput=  515.00 tok/s  accept= 1.00  step= 125.3 ms  warmup=   33s  recompiles=0
+tpu_ar     block= 1 B=128  TPS/user=   5.06  throughput=  647.89 tok/s  accept= 1.00  step= 199.1 ms  warmup=   46s  recompiles=0
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights: 100%|██████████| 399/399 [00:00<00:00, 12509.08it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/58 [00:00<?, ?it/s]Loading weights: 100%|██████████| 58/58 [00:00<00:00, 14141.12it/s]
+loaded on v6e-1 in 3s
+tpu_dflash block= 4 B=  1  TPS/user=  40.50  throughput=   40.50 tok/s  accept= 3.07  step=  75.3 ms  warmup=   23s  recompiles=0
+tpu_dflash block= 4 B=  2  TPS/user=  39.74  throughput=   79.48 tok/s  accept= 3.13  step=  78.6 ms  warmup=   24s  recompiles=0
+tpu_dflash block= 4 B=  4  TPS/user=  37.10  throughput=  148.40 tok/s  accept= 3.13  step=  82.1 ms  warmup=   26s  recompiles=0
+tpu_dflash block= 4 B=  8  TPS/user=  30.76  throughput=  246.05 tok/s  accept= 2.84  step=  84.9 ms  warmup=   47s  recompiles=0
+tpu_dflash block= 4 B= 16  TPS/user=  28.50  throughput=  455.94 tok/s  accept= 2.83  step=  89.8 ms  warmup=   53s  recompiles=0
+tpu_dflash block= 4 B= 32  TPS/user=  22.95  throughput=  734.44 tok/s  accept= 2.76  step= 107.3 ms  warmup=   66s  recompiles=0
+tpu_dflash block= 4 B= 64  TPS/user=  17.42  throughput= 1115.11 tok/s  accept= 2.79  step= 141.3 ms  warmup=   82s  recompiles=0
+dflash block=4 B=128: OOM, skipping larger batches
+tpu_dflash block= 8 B=  1  TPS/user=  45.92  throughput=   45.92 tok/s  accept= 3.79  step=  82.0 ms  warmup=   25s  recompiles=0
+tpu_dflash block= 8 B=  2  TPS/user=  46.01  throughput=   92.02 tok/s  accept= 4.04  step=  81.8 ms  warmup=   25s  recompiles=0
+tpu_dflash block= 8 B=  4  TPS/user=  43.02  throughput=  172.07 tok/s  accept= 3.92  step=  85.0 ms  warmup=   26s  recompiles=0
+tpu_dflash block= 8 B=  8  TPS/user=  35.91  throughput=  287.32 tok/s  accept= 3.64  step=  93.8 ms  warmup=   33s  recompiles=0
+tpu_dflash block= 8 B= 16  TPS/user=  26.44  throughput=  423.04 tok/s  accept= 3.38  step= 110.0 ms  warmup=   39s  recompiles=0
+tpu_dflash block= 8 B= 32  TPS/user=  28.80  throughput=  921.51 tok/s  accept= 3.61  step= 111.1 ms  warmup=   38s  recompiles=0
+tpu_dflash block= 8 B= 64  TPS/user=  16.82  throughput= 1076.78 tok/s  accept= 3.56  step= 181.1 ms  warmup=   43s  recompiles=0
+dflash block=8 B=128: OOM, skipping larger batches
+2026-10-29 23:33:46.002408: W torch_xla/csrc/runtime/pjrt_computation_client.cpp:694] Failed to deserialize executable: UNIMPLEMENTED: Deserializing serialized executable not supported.
+2026-10-29 23:33:52.398572: W torch_xla/csrc/runtime/pjrt_computation_client.cpp:694] Failed to deserialize executable: UNIMPLEMENTED: Deserializing serialized executable not supported.
+2026-10-29 23:34:00.226660: W torch_xla/csrc/runtime/pjrt_computation_client.cpp:694] Failed to deserialize executable: UNIMPLEMENTED: Deserializing serialized executable not supported.
+tpu_dflash block=16 B=  1  TPS/user=  52.65  throughput=   52.65 tok/s  accept= 4.64  step=  86.8 ms  warmup=   24s  recompiles=0
+tpu_dflash block=16 B=  2  TPS/user=  49.24  throughput=   98.49 tok/s  accept= 4.70  step=  86.6 ms  warmup=   24s  recompiles=0
+tpu_dflash block=16 B=  4  TPS/user=  53.59  throughput=  214.37 tok/s  accept= 5.10  step=  88.5 ms  warmup=   26s  recompiles=0
+tpu_dflash block=16 B=  8  TPS/user=  38.80  throughput=  310.42 tok/s  accept= 4.24  step=  94.3 ms  warmup=   34s  recompiles=0
+tpu_dflash block=16 B= 16  TPS/user=  29.53  throughput=  472.42 tok/s  accept= 3.98  step= 114.1 ms  warmup=   39s  recompiles=0
+tpu_dflash block=16 B= 32  TPS/user=  23.95  throughput=  766.27 tok/s  accept= 4.21  step= 144.5 ms  warmup=   40s  recompiles=0
+tpu_dflash block=16 B= 64  TPS/user=  14.31  throughput=  915.52 tok/s  accept= 3.93  step= 223.7 ms  warmup=   46s  recompiles=0
+dflash block=16 B=128: OOM, skipping larger batches
