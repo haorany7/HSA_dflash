@@ -112,11 +112,33 @@ Takeaways:
   gave 59.5 TPS/user vs 52.7 in the sweep. Accept length varies with which questions
   are in the batch; single runs, no repeats.
 
-### Next steps (not started)
+## TODO (not started; do after reconnecting)
 
-- Cut host overhead (`torch_xla.compile` / dynamo `openxla`), then re-sweep.
-- Retry DFlash B=128 in a fresh process; reduce memory if it still OOMs.
-- Repeat runs for error bars.
+Before anything: rebuild `/content/xla_venv` if the VM was reset (see Environment), and
+run `scripts/hetero/test_batched_xla.py xla` (must print PASS). Write new runs to a
+separate JSONL (`--out`) so the baseline `docs/data/pareto_tpu.jsonl` stays intact, and
+update this section and the Results when each item is done.
+
+1. **Measure where the ~61 ms AR step goes.** Profile AR B=1 (block 1) with
+   `torch_xla.debug.metrics` (`ExecuteTime` vs wall time per step) or
+   `torch_xla.debug.profiler`. Expect device time near the ~10 ms HBM floor and the rest
+   host-side lazy tracing. This decides whether item 2 is worth it.
+2. **Cut host overhead, then re-sweep.** Wrap the per-step device work in
+   `batched_xla.py` (draft forward + target forward + argmax) in `torch_xla.compile`
+   or `torch.compile(backend="openxla")` so the trace is cached instead of re-traced
+   each step. Keep the static shapes and the one host transfer per step. Re-check:
+   equivalence test PASS, `recompiles_in_timed_run == 0`, then rerun the full sweep and
+   plot old vs new.
+3. **Retry DFlash B=128 in a fresh process**, one block at a time, e.g.
+   `pareto_tpu.py --system dflash --block 4 --batch 128 --out <new>.jsonl`. If it still
+   OOMs, look at peak memory: target `output_hidden_states=True` keeps every layer's
+   hidden states (only `draft.target_layer_ids` are needed), and the KV cache is
+   `B * max_len` per layer for both models.
+4. **Error bars.** Repeat each point 3x (separate timed runs after one warmup), report
+   mean and min/max; the current table is single runs and visibly noisy (blk 8 B=16 vs
+   B=32; blk 16 B=1 gave 59.5 in a smoke run vs 52.7 in the sweep).
+5. (Optional) Fix the setup step in `scripts/tpu/run_sweep.sh` to use the venv recipe
+   above, since its plain `pip install torch_xla[tpu]` breaks on this image.
 
 ## Caveats / open questions
 
